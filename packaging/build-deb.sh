@@ -49,5 +49,7 @@ EOF
 chmod 755 "$PKG/DEBIAN/postinst"
 
 OUT="$ROOT/ebyte-cfg_${VERSION}_all.deb"
-dpkg-deb --build --root-owner-group "$PKG" "$OUT"
+# gzip compression: newer dpkg-deb defaults to zstd, which the older dpkg on
+# Wiren Board can't unpack ("unknown compression for member control.tar.zst").
+dpkg-deb -Zgzip --build --root-owner-group "$PKG" "$OUT"
 echo "Built $OUT"
