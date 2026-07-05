@@ -1,0 +1,6 @@
+# Keep LF line endings for everything that runs on the Linux controller
+* text=auto eol=lf
+*.sh  text eol=lf
+*.py  text eol=lf
+*.js  text eol=lf
+*.md  text eol=lf
