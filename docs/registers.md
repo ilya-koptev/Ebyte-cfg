@@ -1,78 +1,79 @@
-# Register / config-byte map (NE2-D11)
+# Карта регистров / байтов конфига (NE2-D11)
 
-Offsets are into the **UDP frame payload** of a config page (the 12-byte frame
-header is included, so `payload[0x10]` = `data[0x04]`). Reverse-engineered by
-diffing single-setting changes made in the vendor app.
+Смещения — от начала **payload UDP-кадра** страницы конфига (12-байтный заголовок
+кадра включён, поэтому `payload[0x10]` = `data[0x04]`). Получено реверс-инжинирингом:
+меняем один параметр в фирменном приложении и смотрим diff.
 
-> ⚠️ **`page1 payload 0x10` (data bits) is dangerous.** Valid codes are `0..3`
-> (= 5..8 bits). Writing an out-of-range value (e.g. `0x05`) **hard-bricks the
-> device**: firmware hangs on boot, Ethernet/serial go dead, the reset button is
-> ignored. The tool validates this on write.
+> ⚠️ **`page1 payload 0x10` (число бит данных) — опасный байт.** Допустимые коды
+> `0..3` (= 5..8 бит). Запись значения вне диапазона (напр. `0x05`) **намертво
+> кирпичит устройство**: прошивка зависает при загрузке, Ethernet/serial мертвы,
+> кнопка сброса игнорируется. Инструмент валидирует это при записи.
 
-## Page 1 — main config
+## Страница 1 — основной конфиг
 
-### Network
-| Field    | Payload | Type              | Notes                     |
-|----------|---------|-------------------|---------------------------|
-| IP       | `0xA8`  | IPv4, 4 B big-end | Local IP                  |
-| Gateway  | `0xAC`  | IPv4              |                           |
-| Netmask  | `0xB0`  | IPv4              |                           |
-| DNS1     | `0xB4`  | IPv4              |                           |
-| DNS2     | `0xB8`  | IPv4              |                           |
-| DHCP     | `0xBC`  | byte              | `0` static, `1` DHCP      |
-| Reconnect| `0xBE`  | byte              | reconnection time, sec    |
+### Сеть
+| Поле      | Payload | Тип                | Примечание               |
+|-----------|---------|--------------------|--------------------------|
+| IP        | `0xA8`  | IPv4, 4 Б big-end  | Local IP                 |
+| Gateway   | `0xAC`  | IPv4               |                          |
+| Netmask   | `0xB0`  | IPv4               |                          |
+| DNS1      | `0xB4`  | IPv4               |                          |
+| DNS2      | `0xB8`  | IPv4               |                          |
+| DHCP      | `0xBC`  | байт               | `0` статический, `1` DHCP|
+| Reconnect | `0xBE`  | байт               | время переподключения, с |
 
 ### Serial
-| Field     | Payload | Type | Codes |
-|-----------|---------|------|-------|
-| Data bits | `0x10`  | byte | `0`=5 `1`=6 `2`=7 `3`=8  ⚠️ |
-| Stop bits | `0x11`  | byte | bit1: `0x01`=1, `0x03`=2 (with 8 data bits) |
-| Parity    | `0x12`  | byte | `0`=None `2`=Even `3`=Odd |
-| Baud      | `0x14`  | byte | `1`=1200 `2`=2400 `3`=4800 `4`=9600 `5`=19200 `6`=38400 `7`=57600 `8`=115200 `9`=230400 `0A`=460800 |
+| Поле       | Payload | Тип  | Коды |
+|------------|---------|------|------|
+| Биты данных| `0x10`  | байт | `0`=5 `1`=6 `2`=7 `3`=8  ⚠️ |
+| Стоп-биты  | `0x11`  | байт | бит1: `0x01`=1, `0x03`=2 (при 8 битах данных) |
+| Чётность   | `0x12`  | байт | `0`=None `2`=Even `3`=Odd |
+| Скорость   | `0x14`  | байт | `1`=1200 `2`=2400 `3`=4800 `4`=9600 `5`=19200 `6`=38400 `7`=57600 `8`=115200 `9`=230400 `0A`=460800 |
 
 ### Serial keepalive / heartbeat
-| Field           | Payload | Type | Codes |
-|-----------------|---------|------|-------|
-| Heartbeat mode  | `0x20`  | byte | `0`=Disable `1`=SN `2`=Send MAC `3`=send Customize |
-| Heartbeat cycle | `0x24`  | byte | seconds |
+| Поле               | Payload | Тип  | Коды |
+|--------------------|---------|------|------|
+| Режим heartbeat    | `0x20`  | байт | `0`=Disable `1`=SN `2`=Send MAC `3`=send Customize |
+| Период heartbeat   | `0x24`  | байт | секунды |
 
-### Modbus gateway
-| Field            | Payload | Type      | Codes |
-|------------------|---------|-----------|-------|
-| Gateway mode     | `0xE8`  | byte      | `0`=disable(transparent) `1`=Simple converion `2`=Multihost `3`=Storable `4`=Configurable `5`=AutoUpdate |
-| TCP↔RTU          | `0xEA`  | byte      | `0`/`1` — **independent** of `0xE8` |
-| RTU timeout      | `0xE4`  | u16 LE    | ms |
-| Polling interval | `0xE6`  | u16 LE    | ms |
-| Keep time        | `0xE9`  | byte      | seconds |
+### Modbus-шлюз
+| Поле             | Payload | Тип    | Коды |
+|------------------|---------|--------|------|
+| Режим шлюза       | `0xE8`  | байт   | `0`=disable(прозрачный) `1`=Simple converion `2`=Multihost `3`=Storable `4`=Configurable `5`=AutoUpdate |
+| TCP↔RTU          | `0xEA`  | байт   | `0`/`1` — **независим** от `0xE8` |
+| RTU timeout      | `0xE4`  | u16 LE | мс |
+| Polling interval | `0xE6`  | u16 LE | мс |
+| Keep time        | `0xE9`  | байт   | секунды |
 
-### Net AT / login
-| Field         | Payload | Type        | Notes |
-|---------------|---------|-------------|-------|
-| Net AT enable | `0xC2`  | byte        | `0`/`1` |
-| Net AT header | `0xC3`  | ASCII (~9)  | default `NETAT` |
-| Login user    | `0xCF`  | ASCII (~10) | default `admin` |
-| Login pass    | `0xDA`  | ASCII (~10) | default `admin` |
+### Net AT / логин
+| Поле          | Payload | Тип         | Примечание |
+|---------------|---------|-------------|------------|
+| Net AT enable | `0xC2`  | байт        | `0`/`1` |
+| Net AT header | `0xC3`  | ASCII (~9)  | по умолчанию `NETAT` |
+| Логин         | `0xCF`  | ASCII (~10) | по умолчанию `admin` |
+| Пароль        | `0xDA`  | ASCII (~10) | по умолчанию `admin` |
 
 ### Link 1 (Socket A)
-| Field       | Payload | Type   | Codes |
-|-------------|---------|--------|-------|
-| Work mode   | `0x319` | byte   | `0`=Disable `1`=TCP client `2`=TCP server `3`=UDP client `4`=UDP server `5`=Mqtt client `6`=HTTP client |
-| Remote addr | `0x218` | ASCII  | IP or domain |
-| Remote port | `0x31C` | u16 LE |       |
-| Local port  | `0x320` | u16 LE |       |
+| Поле        | Payload | Тип    | Коды |
+|-------------|---------|--------|------|
+| Work mode   | `0x319` | байт   | `0`=Disable `1`=TCP client `2`=TCP server `3`=UDP client `4`=UDP server `5`=Mqtt client `6`=HTTP client |
+| Remote addr | `0x218` | ASCII  | IP или домен |
+| Remote port | `0x31C` | u16 LE |      |
+| Local port  | `0x320` | u16 LE |      |
 
-## Page 2 — Link 2 (Socket B)
-Same fields as Link 1, on page 2, at different offsets:
+## Страница 2 — Link 2 (Socket B)
+Те же поля, что у Link 1, но на странице 2 и по другим смещениям:
 
-| Field       | Payload | Type   |
+| Поле        | Payload | Тип    |
 |-------------|---------|--------|
-| Work mode   | `0x139` | byte (same enum as Link 1) |
+| Work mode   | `0x139` | байт (тот же enum, что у Link 1) |
 | Remote addr | `0x38`  | ASCII  |
 | Remote port | `0x13C` | u16 LE |
 | Local port  | `0x140` | u16 LE |
 
-## Other
-- `page1 payload 0x0C:0x0E` — app-written word, **not validated** by the device
-  (zeroed on boot). Leave alone; only the per-frame CRC16 at `[10:12]` matters.
-- Pages 3–5 hold HTTP (`/1.php?`, `User-Agent`) and MQTT (client id, topics,
-  password) parameters — present in the config but not yet exposed in the dashboard.
+## Прочее
+- `page1 payload 0x0C:0x0E` — слово, которое пишет приложение, устройством **не
+  проверяется** (обнуляется при загрузке). Не трогаем; важен только по-кадровый
+  CRC16 в `[10:12]`.
+- Страницы 3–5 содержат параметры HTTP (`/1.php?`, `User-Agent`) и MQTT (client id,
+  топики, пароль) — присутствуют в конфиге, но пока не выведены в дашборд.

@@ -1,68 +1,68 @@
-# EBYTE serial-server configurator for Wiren Board
+# Конфигуратор EBYTE serial-server для Wiren Board
 
-Find, read and configure **EBYTE NE2-D11** (RS-485 ↔ Ethernet serial server)
-devices from a Wiren Board controller — as a native **homeui device** (no extra
-web page). Discovers a device on Ethernet 2, shows every setting, lets you edit
-and write them back, then verifies the config and the RS-485 link.
+Поиск, чтение и настройка устройств **EBYTE NE2-D11** (RS-485 ↔ Ethernet
+serial-сервер) прямо с контроллера Wiren Board — как нативное **устройство в
+homeui** (без отдельной веб-страницы). Находит устройство на Ethernet 2,
+показывает все настройки, позволяет их редактировать и записывать обратно, затем
+проверяет конфиг и связь по RS-485.
 
-It talks the vendor's own UDP LAN protocol (reverse-engineered), so **nothing has
-to be enabled on the device** and no vendor Windows tool is needed.
+Работает по «родному» UDP-протоколу вендора (реверс-инжиниринг), поэтому **на
+устройстве ничего включать не нужно** и не требуется фирменная Windows-утилита.
 
-![tabs: network, serial, modbus, link1/2, net at](docs/dashboard.md)
+## Возможности
 
-## Features
+- **Search** — найти EBYTE на Ethernet 2 (broadcast-обнаружение — находит даже с
+  неизвестным/неверным IP).
+- Чтение и правка **всех** настроек: сеть (+DHCP), serial (baud/databit/parity/stop
+  + heartbeat), Modbus-шлюз (режим / TCP↔RTU / таймауты), два сокета **Link 1/2**,
+  reconnection, Net AT — всё выпадающими списками, как в фирменном приложении.
+- **Default** — загрузить заведомо рабочий шаблон; **Write** — записать во флеш,
+  перезагрузить устройство (через V_OUT), прочитать обратно для **проверки** и
+  прогнать **тест моста RS-485**.
+- Безопасно: значения при записи валидируются (например, недопустимое число бит
+  данных может окирпичить устройство — инструмент такое отклоняет).
 
-- **Search** an EBYTE on Ethernet 2 (broadcast discovery — finds it even with an
-  unknown/wrong IP).
-- Read & edit **all** settings: network (+DHCP), serial (baud/databit/parity/stop
-  + heartbeat), Modbus gateway (mode / TCP↔RTU / timeouts), two socket **Links**,
-  reconnection, Net AT — all with dropdowns matching the vendor app.
-- **Default** button loads a known-good template; **Write** flashes the device,
-  reboots it (via V_OUT), reads it back to **verify**, and runs an **RS-485 bridge
-  test**.
-- Safe: writes are byte-validated (e.g. an out-of-range data-bits value can brick
-  the device — the tool refuses it).
-
-## Install (on the controller)
+## Установка (на контроллере)
 
 ```sh
 git clone https://github.com/ilya-koptev/Ebyte-cfg.git
 cd Ebyte-cfg
-sudo bash install.sh                 # WB8 defaults: eth1 + /dev/ttyRS485-2
-# other hardware: sudo bash install.sh <iface> <rs485-port>
+sudo bash install.sh                 # WB8 по умолчанию: eth1 + /dev/ttyRS485-2
+# другое железо: sudo bash install.sh <iface> <rs485-порт>
 ```
 
-That copies the engine + CLI to `/mnt/data/root/ebyte/` and the virtual device to
-`/etc/wb-rules/`. wb-rules auto-reloads — open **homeui → Devices → “EBYTE
-configurator”**.
+Это скопирует движок + CLI в `/mnt/data/root/ebyte/` и виртуальное устройство в
+`/etc/wb-rules/`. wb-rules перечитается сам — открой **homeui → Устройства →
+«EBYTE configurator»**.
 
-## Requirements
+## Требования
 
-- Wiren Board controller (tested on **WB8**, `wb-rules` 2.40) with `mosquitto`,
+- Контроллер Wiren Board (проверено на **WB8**, `wb-rules` 2.40) с `mosquitto`,
   `python3`, homeui.
-- The EBYTE plugged into **Ethernet 2** (config port) and its RS-485 into
-  **RS485-2**, powered from **V_OUT** (needed for the reboot/verify step).
+- EBYTE воткнут в **Ethernet 2** (конфиг-порт), его RS-485 — в **RS485-2**, питание
+  от **V_OUT** (нужно для шага перезагрузки/проверки).
 
-## Documentation
+## Документация
 
-- [Dashboard usage](docs/dashboard.md) — connect, search, default, change IP, write, verify.
-- [Write protocol](docs/protocol.md) — UDP framing, pages, read/write/apply, flash model.
-- [Register map](docs/registers.md) — every decoded config byte with codes.
+- [Работа с дашбордом](docs/dashboard.md) — подключение, поиск, default, смена IP, запись, проверка.
+- [Протокол записи](docs/protocol.md) — UDP-кадры, страницы, чтение/запись/применение, модель флеша.
+- [Карта регистров](docs/registers.md) — все декодированные байты конфига с кодами.
 
-## Layout
+## Структура
 
 ```
-src/ebyte_core.py    UDP protocol engine (discover / read / write) + byte decode
-src/ebyte_cli.py     CLI used by the wb-rules device (read / write / rs485test)
-src/ebyte_config.js  wb-rules virtual device (the homeui UI)
-install.sh           installer
-docs/                protocol, registers, dashboard docs
+src/ebyte_core.py    движок UDP-протокола (обнаружение / чтение / запись) + декод байтов
+src/ebyte_cli.py     CLI для wb-rules-устройства (read / write / rs485test)
+src/ebyte_config.js  wb-rules виртуальное устройство (интерфейс homeui)
+install.sh           установщик
+docs/                документация: протокол, регистры, дашборд
 ```
 
-## Notes & limitations
+## Заметки и ограничения
 
-- Config byte offsets were reverse-engineered on **NE2-D11 / FW-9167-0-11**. Other
-  EBYTE models may differ.
-- Serial params apply only after a **full device reboot** (the tool power-cycles
-  V_OUT). The RS-485 verify test only passes in **transparent** Modbus mode.
-- Not affiliated with EBYTE / Chengdu Ebyte.
+- Смещения байтов конфига получены реверс-инжинирингом на **NE2-D11 /
+  FW-9167-0-11**. У других моделей EBYTE могут отличаться.
+- Serial-параметры применяются только после **полной перезагрузки** устройства
+  (инструмент передёргивает V_OUT). Тест RS-485 проходит только в **прозрачном**
+  режиме Modbus.
+- Проект не связан с EBYTE / Chengdu Ebyte.

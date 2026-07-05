@@ -1,26 +1,27 @@
-# EBYTE LAN configuration protocol (write path)
+# Протокол настройки EBYTE по LAN (путь записи)
 
-Reverse-engineered from vendor-tool captures and validated on **NE2-D11 /
-FW-9167-0-11**. Everything is **UDP broadcast**; no device-side feature has to be
-enabled.
+Реверс-инжиниринг по захватам трафика фирменной утилиты, проверено на **NE2-D11 /
+FW-9167-0-11**. Всё — **UDP broadcast**; никакие функции на устройстве включать не
+надо.
 
-## Transport
+## Транспорт
 
-- Controller socket: `bind(("", 1902))`, `SO_REUSEADDR`, `SO_BROADCAST`,
-  `SO_BINDTODEVICE = <iface>` (e.g. `eth1`). Send to `255.255.255.255:1901`.
-- Because it is link-level broadcast bound to the interface, discovery/read/write
-  work **regardless of the device's IP subnet**.
+- Сокет контроллера: `bind(("", 1902))`, `SO_REUSEADDR`, `SO_BROADCAST`,
+  `SO_BINDTODEVICE = <iface>` (напр. `eth1`). Отправка на `255.255.255.255:1901`.
+- Это link-level broadcast, привязанный к интерфейсу, поэтому обнаружение/чтение/
+  запись работают **независимо от IP-подсети устройства**.
 
-## Frame format
+## Формат кадра
 
 ```
 [opcode:2][MAC:6][seq:2 big-endian][crc:2][data ...]
 ```
 
-- `crc` = **CRC16/MODBUS over `data`** (i.e. `payload[12:]`), stored **little-endian**
-  in `payload[10:12]`.
-- Opcodes: `fe 00` read, `fe 01` write, `fe 03` apply/reboot.
-  Replies: `fd 00` config page, `fd 01` write-ACK, `fd 03` apply-ACK, `fd 06` announce.
+- `crc` = **CRC16/MODBUS по `data`** (т.е. `payload[12:]`), хранится **little-endian**
+  в `payload[10:12]`.
+- Опкоды: `fe 00` чтение, `fe 01` запись, `fe 03` применить/ребут.
+  Ответы: `fd 00` страница конфига, `fd 01` ACK записи, `fd 03` ACK применения,
+  `fd 06` анонс.
 
 ```python
 def crc16_modbus(data):
@@ -32,56 +33,58 @@ def crc16_modbus(data):
     return crc & 0xFFFF
 ```
 
-## Discovery
+## Обнаружение
 
-Send the 30-byte magic `b"www.cdebyte.com" * 2` to `:1901`. Every EBYTE replies
-(`fd 06` announce) to `:1902`; the **device IP is the source IP** of its reply.
+Отправить 30-байтную «магию» `b"www.cdebyte.com" * 2` на `:1901`. Каждый EBYTE
+отвечает (`fd 06` анонс) на `:1902`; **IP устройства = source IP его ответа**.
 
-## The config is 7 pages — `seq` is the PAGE INDEX (0..6), not a counter
+## Конфиг — это 7 страниц; `seq` — это ИНДЕКС СТРАНИЦЫ (0..6), не счётчик
 
-Poll `fe 00 + MAC + seq + 00*8` for `seq = 0..6`; the device answers `fd 00` frames:
+Опрашиваем `fe 00 + MAC + seq + 00*8` для `seq = 0..6`; устройство отвечает
+кадрами `fd 00`:
 
-| seq | size  | contents                                            |
-|-----|-------|-----------------------------------------------------|
-| 0   | 96 B  | identity: model / firmware / serial                 |
-| 1   | 1036 B| **main config**: network, serial, Modbus, Link 1    |
-| 2   | 1036 B| **Link 2** + HTTP/MQTT socket B                     |
-| 3–5 | 1036 B| HTTP / MQTT parameters                              |
-| 6   | 128 B | reserve                                             |
+| seq | размер | содержимое                                          |
+|-----|--------|-----------------------------------------------------|
+| 0   | 96 Б   | идентификация: модель / прошивка / серийник         |
+| 1   | 1036 Б | **основной конфиг**: сеть, serial, Modbus, Link 1   |
+| 2   | 1036 Б | **Link 2** + HTTP/MQTT socket B                     |
+| 3–5 | 1036 Б | параметры HTTP / MQTT                               |
+| 6   | 128 Б  | резерв                                              |
 
-Offsets in [registers.md](registers.md) are into the **frame payload** of the
-relevant page (12-byte header included).
+Смещения в [registers.md](registers.md) — от начала **payload кадра** нужной
+страницы (12-байтный заголовок включён).
 
-## Writing
+## Запись
 
-1. Read the current config (all pages).
-2. Patch the target bytes in the relevant page; **do not touch page-1 payload
-   `0x10` (data-bits)** with an out-of-range value — that **hard-bricks the
-   device** (firmware hangs on boot, Ethernet/serial dead, reset button ignored).
-3. Send `fe 01 + MAC + seq + crc + data` for **every page**, **twice** (the vendor
-   tool sends two identical rounds — the device latches config on the confirming
-   round). Each page is ACKed with `fd 01`.
-4. Send `fe 03 + MAC + 0x1101 + 00*8` (apply/reboot).
+1. Прочитать текущий конфиг (все страницы).
+2. Пропатчить нужные байты в соответствующей странице; **не трогай payload `0x10`
+   страницы 1 (число бит данных)** недопустимым значением — это **намертво
+   окирпичит устройство** (прошивка зависает при загрузке, Ethernet/serial мертвы,
+   кнопка сброса игнорируется).
+3. Отправить `fe 01 + MAC + seq + crc + data` для **каждой** страницы, **дважды**
+   (фирменная утилита шлёт два одинаковых раунда — устройство латчит конфиг на
+   подтверждающем раунде). Каждая страница подтверждается `fd 01`.
+4. Отправить `fe 03 + MAC + 0x1101 + 00*8` (применить/ребут).
 
-Writes commit to **flash immediately** (proven: value survives a power cycle).
+Запись коммитится во **флеш сразу** (доказано: значение переживает снятие питания).
 
-### Two important quirks
+### Две важные особенности
 
-- **The change only takes effect after a full reboot.** The device loads flash into
-  its running config on boot; a read right after a write still shows the *old*
-  running value. `fe 03` is meant to reboot but is **unreliable** on this unit — so
-  this project applies changes by **power-cycling V_OUT**
-  (`/devices/wb-gpio/controls/V_OUT`) and then re-reading.
-- **The `payload[0x0C:0x0E]` word is NOT a validated checksum.** The vendor app
-  writes a value there, but the device **zeroes it on boot and runs fine** — so it
-  can be left alone when writing. (The device does validate the per-frame
-  CRC16 at `[10:12]`, which this tool always recomputes.)
+- **Изменение вступает в силу только после полной перезагрузки.** Устройство грузит
+  флеш в running-конфиг при старте; чтение сразу после записи покажет ещё *старое*
+  running-значение. `fe 03` должен ребутить, но на этом экземпляре **ненадёжен** —
+  поэтому проект применяет изменения **передёргиванием V_OUT**
+  (`/devices/wb-gpio/controls/V_OUT`) с последующим перечитыванием.
+- **Слово `payload[0x0C:0x0E]` — НЕ проверяемая контрольная сумма.** Фирменная
+  утилита что-то туда пишет, но устройство **обнуляет его при загрузке и работает
+  нормально** — так что при записи его можно не трогать. (Устройство проверяет
+  по-кадровый CRC16 в `[10:12]`, который инструмент всегда пересчитывает.)
 
-## Control-frame examples
+## Примеры управляющих кадров
 
 ```
-read  page 1 : fe 00 <MAC> 00 01 00 00 00 00 00 00
-write ACK    : fd 01 <MAC> <seq> 00 01 00 00 00 00 00 00
-apply        : fe 03 <MAC> 11 01 00 00 00 00 00 00
-announce     : fd 06 <MAC> 11 00 00 00 00 00 00 00
+чтение стр. 1 : fe 00 <MAC> 00 01 00 00 00 00 00 00
+ACK записи    : fd 01 <MAC> <seq> 00 01 00 00 00 00 00 00
+применить     : fe 03 <MAC> 11 01 00 00 00 00 00 00
+анонс         : fd 06 <MAC> 11 00 00 00 00 00 00 00
 ```
