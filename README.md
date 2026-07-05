@@ -57,7 +57,7 @@ apt update && apt install ebyte-cfg
 - [Работа с дашбордом](docs/dashboard.md) — подключение, поиск, default, смена IP, запись, проверка.
 - [Протокол записи](docs/protocol.md) — UDP-кадры, страницы, чтение/запись/применение, модель флеша.
 - [Карта регистров](docs/registers.md) — все декодированные байты конфига с кодами.
-- [Установка и обновление через APT](docs/apt.md) — .deb-пакет, репозиторий на GitHub Pages, `apt upgrade`.
+- [Установка и обновление через APT](docs/apt.md) — .deb-пакет, репозиторий в ветке `apt` (raw.githubusercontent), `apt upgrade`.
 
 ## Структура
 
