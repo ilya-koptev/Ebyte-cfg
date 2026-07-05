@@ -1,0 +1,55 @@
+name: build-and-publish-apt
+
+# Builds the .deb and publishes a flat APT repository to GitHub Pages on every
+# push to main. Version auto-increments (1.0.<run>) so `apt upgrade` always sees
+# a newer package.
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install packaging tools
+        run: sudo apt-get update && sudo apt-get install -y dpkg-dev apt-utils
+
+      - name: Build .deb
+        run: bash packaging/build-deb.sh "1.0.${GITHUB_RUN_NUMBER}"
+
+      - name: Assemble flat APT repo
+        run: |
+          mkdir -p apt
+          cp ebyte-cfg_*_all.deb apt/
+          cd apt
+          dpkg-scanpackages --multiversion . > Packages
+          gzip -9 -k -f Packages
+          apt-ftparchive release . > Release
+          ls -l
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: apt
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

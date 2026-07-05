@@ -1,10 +1,11 @@
 #!/bin/bash
-# Install the EBYTE serial-server configurator on a Wiren Board controller.
+# Install the EBYTE serial-server configurator on a Wiren Board controller
+# (manual / from-source install; for apt-based updates see docs/apt.md).
 #
 #   sudo bash install.sh [IFACE] [RS485_PORT]
 #
 # Defaults (Wiren Board 8): IFACE=eth1 (Ethernet 2), RS485_PORT=/dev/ttyRS485-2.
-# On other controllers check `ip link` and `ls -l /dev/ttyRS485*` and pass args, e.g.:
+# Other controllers: check `ip link` and `ls -l /dev/ttyRS485*`, e.g.:
 #   sudo bash install.sh eth0 /dev/ttyRS485-1
 set -e
 
@@ -17,13 +18,22 @@ echo "Installing EBYTE configurator (iface=$IFACE, rs485=$PORT485)..."
 mkdir -p "$DEST"
 cp "$SRC/ebyte_core.py" "$DEST/"
 cp "$SRC/ebyte_cli.py"  "$DEST/"
-# patch the interface / RS-485 port constants
-sed -i "s#^IFACE = .*#IFACE = \"$IFACE\"#"       "$DEST/ebyte_cli.py"
-sed -i "s#^PORT485 = .*#PORT485 = \"$PORT485\"#"  "$DEST/ebyte_cli.py"
 rm -rf "$DEST/__pycache__"
 cp "$SRC/ebyte_config.js" /etc/wb-rules/
 
+# interface / RS-485 port live in a conffile (read by ebyte_cli.py; survives upgrades)
+if [ ! -f /etc/default/ebyte-cfg ]; then
+    cat > /etc/default/ebyte-cfg <<EOF
+# EBYTE configurator settings
+IFACE="$IFACE"
+PORT485="$PORT485"
+EOF
+else
+    echo "Keeping existing /etc/default/ebyte-cfg"
+fi
+
 echo "Done."
-echo "  engine + CLI -> $DEST"
+echo "  engine + CLI    -> $DEST"
 echo "  wb-rules device -> /etc/wb-rules/ebyte_config.js (auto-reloads)"
+echo "  settings        -> /etc/default/ebyte-cfg"
 echo "Open homeui -> Devices -> 'EBYTE configurator'."

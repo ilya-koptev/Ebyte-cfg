@@ -35,6 +35,16 @@ sudo bash install.sh                 # WB8 по умолчанию: eth1 + /dev/
 `/etc/wb-rules/`. wb-rules перечитается сам — открой **homeui → Устройства →
 «EBYTE configurator»**.
 
+### Или через APT — с автообновлением по `apt upgrade`
+
+```sh
+echo 'deb [trusted=yes] https://ilya-koptev.github.io/Ebyte-cfg/ ./' \
+    > /etc/apt/sources.list.d/ebyte-cfg.list
+apt update && apt install ebyte-cfg
+```
+Дальше пакет обновляется вместе со всеми: **`apt update && apt upgrade`**.
+Подробности и настройка публикации — [docs/apt.md](docs/apt.md).
+
 ## Требования
 
 - Контроллер Wiren Board (проверено на **WB8**, `wb-rules` 2.40) с `mosquitto`,
@@ -47,6 +57,7 @@ sudo bash install.sh                 # WB8 по умолчанию: eth1 + /dev/
 - [Работа с дашбордом](docs/dashboard.md) — подключение, поиск, default, смена IP, запись, проверка.
 - [Протокол записи](docs/protocol.md) — UDP-кадры, страницы, чтение/запись/применение, модель флеша.
 - [Карта регистров](docs/registers.md) — все декодированные байты конфига с кодами.
+- [Установка и обновление через APT](docs/apt.md) — .deb-пакет, репозиторий на GitHub Pages, `apt upgrade`.
 
 ## Структура
 

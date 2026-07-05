@@ -22,9 +22,31 @@ import socket
 import subprocess
 import ebyte_core as E
 
-IFACE = "eth1"                       # Ethernet 2 = eth1
-E.IFACE = IFACE
+IFACE = "eth1"                       # Ethernet 2 = eth1 (default for WB8)
 PORT485 = "/dev/ttyRS485-2"
+
+
+def _load_conf(path="/etc/default/ebyte-cfg"):
+    """Override IFACE / PORT485 from a conffile (survives apt upgrades)."""
+    global IFACE, PORT485
+    try:
+        with open(path) as f:
+            for line in f:
+                line = line.strip()
+                if line.startswith("#") or "=" not in line:
+                    continue
+                k, v = line.split("=", 1)
+                v = v.strip().strip('"').strip("'")
+                if k.strip() == "IFACE":
+                    IFACE = v
+                elif k.strip() == "PORT485":
+                    PORT485 = v
+    except OSError:
+        pass
+
+
+_load_conf()
+E.IFACE = IFACE
 FIELDS = ("ip", "gateway", "netmask", "dns1", "dns2")
 BAUD_CONST = {1200: termios.B1200, 2400: termios.B2400, 4800: termios.B4800,
               9600: termios.B9600, 19200: termios.B19200, 38400: termios.B38400,
