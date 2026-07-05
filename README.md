@@ -26,8 +26,8 @@ to be enabled on the device** and no vendor Windows tool is needed.
 ## Install (on the controller)
 
 ```sh
-git clone https://github.com/<you>/ebyte_cfg.git
-cd ebyte_cfg
+git clone https://github.com/ilya-koptev/Ebyte-cfg.git
+cd Ebyte-cfg
 sudo bash install.sh                 # WB8 defaults: eth1 + /dev/ttyRS485-2
 # other hardware: sudo bash install.sh <iface> <rs485-port>
 ```
