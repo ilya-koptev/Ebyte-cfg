@@ -1,0 +1,16 @@
+Package: ebyte-cfg
+Version: 1.0.5
+Architecture: all
+Maintainer: Ilya Koptev <ilya.koptev@struhe.com>
+Depends: python3, wb-rules, mosquitto-clients
+Filename: ./ebyte-cfg_1.0.5_all.deb
+Size: 12756
+MD5sum: c38745ec8f257c3eba0f4a924958bde8
+SHA1: 6367f512c7237d58c16240a0bc693eede652a40a
+SHA256: 59e6c54b5674f594e7b0a59ff897026ec222522b5cca1520a7efac43bc640a43
+Section: utils
+Priority: optional
+Description: EBYTE serial-server configurator for Wiren Board (homeui device)
+ Discover and configure EBYTE NE2-D11 RS-485 <-> Ethernet serial servers from a
+ Wiren Board controller via a native homeui device.
+
