@@ -1,8 +1,9 @@
 name: build-and-publish-apt
 
-# Builds the .deb and publishes a flat APT repository to GitHub Pages on every
-# push to main. Version auto-increments (1.0.<run>) so `apt upgrade` always sees
-# a newer package.
+# Builds the .deb and publishes a flat APT repository into the `apt` branch on
+# every push to main. The repo is served over raw.githubusercontent.com — no
+# GitHub Pages setup required. Version auto-increments (1.0.<run>) so
+# `apt upgrade` always sees a newer package.
 
 on:
   push:
@@ -10,12 +11,10 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
 concurrency:
-  group: pages
+  group: apt-publish
   cancel-in-progress: true
 
 jobs:
@@ -23,11 +22,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Enable GitHub Pages (no manual setup needed)
-        uses: actions/configure-pages@v5
-        with:
-          enablement: true
 
       - name: Install packaging tools
         run: sudo apt-get update && sudo apt-get install -y dpkg-dev apt-utils
@@ -37,7 +31,7 @@ jobs:
 
       - name: Assemble flat APT repo
         run: |
-          mkdir -p apt
+          rm -rf apt && mkdir -p apt
           cp ebyte-cfg_*_all.deb apt/
           cd apt
           dpkg-scanpackages --multiversion . > Packages
@@ -45,16 +39,15 @@ jobs:
           apt-ftparchive release . > Release
           ls -l
 
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: apt
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Publish to apt branch
+        run: |
+          cd apt
+          git init -q
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -q -b apt
+          git add -A
+          git commit -q -m "apt repo 1.0.${GITHUB_RUN_NUMBER}"
+          git push -f "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" apt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

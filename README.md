@@ -38,7 +38,7 @@ sudo bash install.sh                 # WB8 по умолчанию: eth1 + /dev/
 ### Или через APT — с автообновлением по `apt upgrade`
 
 ```sh
-echo 'deb [trusted=yes] https://ilya-koptev.github.io/Ebyte-cfg/ ./' \
+echo 'deb [trusted=yes] https://raw.githubusercontent.com/ilya-koptev/Ebyte-cfg/apt/ ./' \
     > /etc/apt/sources.list.d/ebyte-cfg.list
 apt update && apt install ebyte-cfg
 ```

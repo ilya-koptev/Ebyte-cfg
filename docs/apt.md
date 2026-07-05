@@ -1,15 +1,17 @@
 # Установка и обновление через APT
 
-Проект собирается в **.deb-пакет** `ebyte-cfg` и публикуется в **APT-репозиторий на
-GitHub Pages**. После разовой настройки источника обновления идут штатно:
-**`apt update && apt upgrade`** подтянет свежую версию.
+Проект собирается в **.deb-пакет** `ebyte-cfg` и публикуется в **APT-репозиторий,
+раздаваемый через `raw.githubusercontent.com`** (файлы лежат в ветке `apt`). После
+разовой настройки источника обновления идут штатно: **`apt update && apt upgrade`**
+подтянет свежую версию. GitHub Pages не требуется.
 
 ## Как это работает
 
 - При каждом `push` в `main` GitHub Actions
   ([.github/workflows/release.yml](../.github/workflows/release.yml)) собирает
   `ebyte-cfg_1.0.<номер-сборки>_all.deb`, формирует плоский APT-репозиторий и
-  публикует его на GitHub Pages.
+  публикует его force-push'ем в ветку **`apt`** (раздаётся через
+  `raw.githubusercontent.com`).
 - Версия авто-инкрементится (`1.0.<run>`), поэтому `apt upgrade` всегда видит
   более новую версию.
 - Пакет ставит:
@@ -20,15 +22,15 @@ GitHub Pages**. После разовой настройки источника 
 
 ## Разовая подготовка репозитория (в GitHub, делается один раз)
 
-1. Settings → **Pages** → Build and deployment → Source = **GitHub Actions**.
-2. Settings → Actions → включить Actions (если выключены).
-3. Сделать `push` в `main` — workflow соберёт пакет и опубликует репозиторий по
-   адресу `https://ilya-koptev.github.io/Ebyte-cfg/`.
+Ничего вручную настраивать не нужно — при первом `push` в `main` workflow сам
+соберёт пакет и создаст ветку `apt` с репозиторием. Достаточно, чтобы Actions были
+включены (по умолчанию включены). Адрес репозитория:
+`https://raw.githubusercontent.com/ilya-koptev/Ebyte-cfg/apt/`.
 
 ## Разовая настройка на контроллере
 
 ```sh
-echo 'deb [trusted=yes] https://ilya-koptev.github.io/Ebyte-cfg/ ./' \
+echo 'deb [trusted=yes] https://raw.githubusercontent.com/ilya-koptev/Ebyte-cfg/apt/ ./' \
     > /etc/apt/sources.list.d/ebyte-cfg.list
 apt update
 apt install ebyte-cfg
